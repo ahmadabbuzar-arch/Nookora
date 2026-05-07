@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>Nookora – Hidden Places Near You</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root {
     --teal: #00C9A7;
@@ -109,33 +107,34 @@
 
   <!-- ============ MAP SCREEN ============ -->
   <div id="screen-map" class="screen hidden">
-    <div style="padding:54px 20px 10px;display:flex;justify-content:space-between;align-items:center">
+    <div style="padding:54px 20px 16px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-weight:900;font-size:20px">Explore Map</span>
-      <button onclick="locateMe()" style="background:rgba(0,201,167,0.12);border:1px solid rgba(0,201,167,0.3);color:#00C9A7;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📍 My Location</button>
+      <span style="font-size:20px;cursor:pointer" onclick="document.getElementById('search-input').focus();showScreen('home')">🔍</span>
     </div>
-    <div id="map-filters" style="padding-left:20px;display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;padding-right:20px"></div>
-    <div style="margin:0 16px;border-radius:20px;overflow:hidden;height:320px;border:1px solid var(--border);position:relative">
-      <div id="leaflet-map" style="width:100%;height:100%;z-index:1"></div>
-      <div id="map-loading" style="position:absolute;inset:0;background:#13131A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;border-radius:20px">
-        <div style="font-size:36px;animation:mapspin 1.5s linear infinite">🗺️</div>
-        <div style="font-weight:700;font-size:14px;color:#00C9A7">Getting your location...</div>
-        <div style="font-size:12px;color:#555">Allow location access when prompted</div>
-      </div>
+    <div id="map-filters" style="padding-left:20px;display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;padding-right:20px"></div>
+    <!-- Fake Map -->
+    <div style="margin:0 20px;border-radius:20px;overflow:hidden;height:300px;background:#0E0E1A;position:relative;border:1px solid var(--border)">
+      <svg width="100%" height="100%" style="position:absolute">
+        <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="20%" y1="0" x2="20%" y2="100%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="40%" y1="0" x2="40%" y2="100%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="60%" y1="0" x2="60%" y2="100%" stroke="#1A1A2E" stroke-width="1"/>
+        <line x1="80%" y1="0" x2="80%" y2="100%" stroke="#1A1A2E" stroke-width="1"/>
+        <!-- Road lines -->
+        <line x1="0" y1="52%" x2="100%" y2="48%" stroke="#1E1E30" stroke-width="6"/>
+        <line x1="30%" y1="0" x2="35%" y2="100%" stroke="#1E1E30" stroke-width="5"/>
+        <line x1="65%" y1="0" x2="60%" y2="100%" stroke="#1E1E30" stroke-width="4"/>
+      </svg>
+      <div id="map-dots"></div>
+      <!-- Current location pulse -->
+      <div style="position:absolute;left:48%;top:48%;width:14px;height:14px;background:#4FC3F7;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 8px rgba(79,195,247,0.2);transform:translate(-50%,-50%);animation:pulse 2s infinite"></div>
+      <style>@keyframes pulse{0%,100%{box-shadow:0 0 0 8px rgba(79,195,247,0.2)}50%{box-shadow:0 0 0 14px rgba(79,195,247,0.08)}}</style>
     </div>
-    <style>
-      @keyframes mapspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-      .leaflet-container{background:#0E0E16!important}
-      .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.6)}
-      .leaflet-popup-content-wrapper{background:#13131A;border:1px solid #2A2A3A;border-radius:14px;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-      .leaflet-popup-tip{background:#13131A}
-      .leaflet-popup-content{margin:12px 14px;font-family:'Nunito',sans-serif;min-width:160px}
-      .leaflet-control-zoom a{background:#1A1A24!important;color:#fff!important;border-color:#2A2A3A!important}
-      .leaflet-control-attribution{display:none!important}
-      .user-dot{width:16px;height:16px;background:#4FC3F7;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 8px rgba(79,195,247,0.2);animation:gpsPulse 2s infinite}
-      @keyframes gpsPulse{0%,100%{box-shadow:0 0 0 8px rgba(79,195,247,0.2)}50%{box-shadow:0 0 0 18px rgba(79,195,247,0.04)}}
-    </style>
-    <div id="map-bottom-card" style="margin:14px 16px 0;background:var(--card);border-radius:16px;padding:12px 14px;border:1px solid var(--border)"></div>
-    <div style="margin:12px 16px 0;padding-bottom:90px">
+    <!-- Map bottom card -->
+    <div id="map-bottom-card" style="margin:16px 20px 0;background:var(--card);border-radius:16px;padding:12px 14px;border:1px solid var(--border)"></div>
+    <div style="margin:12px 20px 0;padding-bottom:90px">
       <button class="teal-btn" onclick="openMapDirections()">✈ Get Directions</button>
     </div>
   </div>
@@ -306,185 +305,44 @@
 <script>
 // ==================== DATA ====================
 const TEAL = '#00C9A7';
-let savedPlaces = [];
+let savedPlaces = [2, 4]; // initially saved
 let selectedPlace = null;
 let prevScreen = 'home';
 let activeCat = 'All';
-let mapFocusId = 0;
+let mapFocusId = 5;
 let selectedPrice = '';
-let places = []; // Will be filled from real location data
+
+const places = [
+  { id:1, name:"The Secret Garden Café", category:"Cafe", distance:"2.1 km", rating:4.8, price:"₹₹", tags:["Aesthetic","Cozy","Good for Dates"], bestTime:"7:00 PM – 11:00 PM", description:"A hidden café tucked behind ivy walls with fairy lights and dreamy ambience. Perfect for a quiet evening or a romantic date.", img:"https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&q=80", reviews:[{name:"Priya K.",rating:5,text:"Feels like stepping into another world! The fairy lights create such a magical atmosphere.",avatar:"PK"}], type:"cafe" },
+  { id:2, name:"Skyline Hideout", category:"Rooftop", distance:"1.8 km", rating:4.6, price:"₹", tags:["Sunset View","Budget","City Vibes"], bestTime:"5:00 PM – 9:00 PM", description:"Best sunset view in town. A secret rooftop with panoramic city views that most locals don't even know about.", img:"https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80", reviews:[{name:"Aryan M.",rating:5,text:"Sunset here is unreal! You can see the entire city from up here.",avatar:"AM"}], type:"rooftop" },
+  { id:3, name:"The Vintage Wall", category:"Art & Culture", distance:"2.3 km", rating:4.7, price:"Free", tags:["Photography","Street Art","Vibes"], bestTime:"10:00 AM – 6:00 PM", description:"A hidden street full of stunning murals and vintage vibes. Every wall tells a story, perfect for reels and photography.", img:"https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=600&q=80", reviews:[{name:"Sneha R.",rating:5,text:"Every corner is a photo-op! I spent 2 hours here and still didn't capture everything.",avatar:"SR"}], type:"art" },
+  { id:4, name:"Whispering Woods", category:"Nature", distance:"4.2 km", rating:4.9, price:"Free", tags:["Peaceful","Trail","Hidden"], bestTime:"6:00 AM – 10:00 AM", description:"Peaceful trail away from the crowd. Perfect morning escape with birds chirping and fresh air that feels miles away from the city.", img:"https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=80", reviews:[{name:"Dev S.",rating:5,text:"So peaceful. A hidden gem! I come here every weekend now to reset.",avatar:"DS"}], type:"nature" },
+  { id:5, name:"Moonlight Terrace", category:"Rooftop", distance:"1.3 km", rating:4.7, price:"₹₹", tags:["Sunset View","Good for Photos","Chill Vibes"], bestTime:"5:00 PM – 11:00 PM", description:"A cozy rooftop with stunning city views, perfect for chill evenings with friends or a solo unwinding session.", img:"https://images.unsplash.com/photo-1519302959554-a75be0afc82a?w=600&q=80", reviews:[{name:"Riya M.",rating:5,text:"The vibe is unreal! Perfect place to unwind after a long week.",avatar:"RM"}], type:"rooftop" },
+  { id:6, name:"Chai Adda 1947", category:"Cafe", distance:"0.9 km", rating:4.5, price:"₹", tags:["Budget","Retro","Chai"], bestTime:"8:00 AM – 10:00 PM", description:"Old-school chai tapri with vintage posters and the best masala chai in town. A true time capsule.", img:"https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&q=80", reviews:[{name:"Kabir A.",rating:5,text:"Best chai in the city, no contest. The kulhad is a game-changer.",avatar:"KA"}], type:"cafe" },
+];
 
 const cats = ["All","Cafes","Rooftop","Nature","Art & Culture"];
 const catMap = {"All":null,"Cafes":"cafe","Rooftop":"rooftop","Nature":"nature","Art & Culture":"art"};
 const catIcons = {"All":"🏠","Cafes":"☕","Rooftop":"🏙️","Nature":"🌿","Art & Culture":"🎨"};
 
-// OSM amenity/tag → our type mapping
-const osmTypeMap = {
-  cafe:'cafe', coffee_shop:'cafe', restaurant:'cafe', bar:'cafe', pub:'cafe',
-  viewpoint:'rooftop', observation_platform:'rooftop',
-  park:'nature', garden:'nature', nature_reserve:'nature', forest:'nature',
-  museum:'art', gallery:'art', artwork:'art', theatre:'art'
-};
-const typeImages = {
-  cafe: ['https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&q=80','https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&q=80','https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80'],
-  rooftop: ['https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80','https://images.unsplash.com/photo-1519302959554-a75be0afc82a?w=600&q=80'],
-  nature: ['https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=80','https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=80'],
-  art: ['https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=600&q=80','https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&q=80']
-};
-const typeTags = {
-  cafe: [['Cozy','Hidden Gem','Local Fav'],['Budget','Aesthetic','Chill'],['Must Try','Chai Spot','Retro']],
-  rooftop: [['Sunset View','City Vibes','Chill'],['Good for Photos','Night View'],['Hidden','Scenic']],
-  nature: [['Peaceful','Trail','Hidden'],['Green','Fresh Air','Walk'],['Escape','Morning Spot']],
-  art: [['Photography','Street Art','Vibes'],['Aesthetic','Murals'],['Culture','Local Art']]
-};
-const typeBestTime = {
-  cafe:'8:00 AM – 10:00 PM', rooftop:'5:00 PM – 10:00 PM',
-  nature:'6:00 AM – 10:00 AM', art:'10:00 AM – 6:00 PM'
-};
-const typeDescriptions = {
-  cafe: 'A cozy local spot popular with the neighbourhood. Great for a quiet break or catching up with friends over a good cup.',
-  rooftop: 'A lesser-known rooftop with beautiful views of the surroundings. Best visited during golden hour.',
-  nature: 'A peaceful green escape tucked away from the city rush. Perfect for a morning walk or quiet time in nature.',
-  art: 'A cultural gem with unique local art and character. Great for photography and exploring the creative side of the city.'
-};
-
-function calcDist(lat1,lng1,lat2,lng2){
-  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return (R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1);
-}
-
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-// ==================== FETCH REAL PLACES ====================
-async function fetchNearbyPlaces(lat, lng) {
-  showHomeLoading(true);
-  const radius = 3000; // 3km
-  const query = `
-    [out:json][timeout:15];
-    (
-      node["amenity"~"cafe|restaurant|bar|pub"](around:${radius},${lat},${lng});
-      node["tourism"~"viewpoint|observation_platform|artwork|gallery|museum"](around:${radius},${lat},${lng});
-      node["leisure"~"park|garden|nature_reserve"](around:${radius},${lat},${lng});
-    );
-    out body 40;
-  `;
-  try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method:'POST', body:'data='+encodeURIComponent(query)
-    });
-    const data = await res.json();
-    const elements = data.elements || [];
-
-    let id = 1;
-    const seen = new Set();
-    const fetched = [];
-
-    for (const el of elements) {
-      const tags = el.tags || {};
-      const name = tags.name || tags['name:en'];
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-
-      // Determine type
-      let type = null;
-      if (tags.amenity) type = osmTypeMap[tags.amenity];
-      if (!type && tags.tourism) type = osmTypeMap[tags.tourism];
-      if (!type && tags.leisure) type = osmTypeMap[tags.leisure];
-      if (!type) continue;
-
-      const dist = calcDist(lat, lng, el.lat, el.lon);
-      const imgs = typeImages[type] || typeImages.cafe;
-      const tags2 = typeTags[type] || typeTags.cafe;
-      const rating = (4.0 + Math.random()*0.9).toFixed(1);
-      const priceOpts = ['Free','₹','₹₹','₹₹₹'];
-      const price = type === 'nature' || type === 'art' ? 'Free' : pick(['₹','₹₹','₹₹₹']);
-
-      fetched.push({
-        id: id++,
-        name,
-        category: type === 'cafe' ? 'Cafe' : type === 'rooftop' ? 'Rooftop' : type === 'nature' ? 'Nature' : 'Art & Culture',
-        distance: dist + ' km',
-        distNum: parseFloat(dist),
-        rating: parseFloat(rating),
-        price,
-        tags: pick(tags2),
-        bestTime: typeBestTime[type],
-        description: tags['description'] || typeDescriptions[type],
-        img: pick(imgs),
-        lat: el.lat,
-        lng: el.lon,
-        reviews: [{
-          name: 'Local Explorer',
-          rating: 5,
-          text: 'Found this gem recently — totally worth the visit!',
-          avatar: 'LE'
-        }],
-        type
-      });
-
-      if (fetched.length >= 20) break;
-    }
-
-    if (fetched.length < 3) throw new Error('Too few results');
-
-    // Sort by distance
-    fetched.sort((a,b) => a.distNum - b.distNum);
-    places = fetched;
-    mapFocusId = places[0]?.id || 1;
-    showHomeLoading(false);
-    renderCategories();
-    renderCurated();
-    renderGems();
-    renderMapBottomCard();
-    if (leafletMap) {
-      placeMarkers.forEach(m => leafletMap.removeLayer(m));
-      placeMarkers = [];
-      addPlaceMarkersToMap();
-    }
-    showToast('📍 Showing places near you!');
-  } catch(e) {
-    console.error(e);
-    showHomeLoading(false);
-    showToast('Could not load real places. Try again.');
-  }
-}
-
-function showHomeLoading(show) {
-  let el = document.getElementById('home-loading');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'home-loading';
-    el.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,15,0.85);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;backdrop-filter:blur(6px)';
-    el.innerHTML = '<div style="font-size:42px;animation:mapspin 1.2s linear infinite">📍</div><div style="font-weight:800;font-size:16px;color:#00C9A7">Finding hidden gems near you...</div><div style="font-size:13px;color:#555">Searching real places around your location</div>';
-    document.getElementById('app').appendChild(el);
-  }
-  el.style.display = show ? 'flex' : 'none';
-}
+const mapDots = [
+  { id:1, left:"30%", top:"60%", icon:"☕", color:"#FF6B35" },
+  { id:2, left:"60%", top:"30%", icon:"🏙️", color:TEAL },
+  { id:3, left:"75%", top:"55%", icon:"🎨", color:"#9C27B0" },
+  { id:4, left:"20%", top:"35%", icon:"🌿", color:"#4CAF50" },
+  { id:5, left:"50%", top:"70%", icon:"❤️", color:"#FF4D6D" },
+  { id:6, left:"15%", top:"75%", icon:"☕", color:"#FF9800" },
+];
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
   renderCategories();
-  renderGems();
   renderCurated();
+  renderGems();
+  renderMapDots();
+  renderMapBottomCard();
   renderMapFilters();
   renderSavedTabs();
-
-  // Auto-get location on load
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        userLat = pos.coords.latitude;
-        userLng = pos.coords.longitude;
-        fetchNearbyPlaces(userLat, userLng);
-        if (leafletMap) initMap(userLat, userLng);
-      },
-      err => {
-        showToast('Allow location for real nearby places');
-      },
-      { enableHighAccuracy: true, timeout: 12000 }
-    );
-  }
 });
 
 // ==================== SCREENS ====================
@@ -501,7 +359,6 @@ function showScreen(name) {
 
   if (name === 'saved') renderSavedList();
   if (name === 'home') { renderGems(); renderCurated(); }
-  if (name === 'map' && !leafletMap) { setTimeout(locateMe, 200); }
 
   // Show/hide nav
   const noNav = ['detail','add'].includes(name);
@@ -678,145 +535,38 @@ function sharePlace() {
 }
 
 // ==================== MAP ====================
-// ==================== LEAFLET MAP ====================
-let leafletMap = null;
-let userMarker = null;
-let placeMarkers = [];
-let userLat = null, userLng = null;
-let activeMapFilter = 'All';
-
-const placeColors = { cafe:'#FF6B35', rooftop:'#00C9A7', nature:'#4CAF50', art:'#9C27B0' };
-const placeEmojis = { cafe:'☕', rooftop:'🏙️', nature:'🌿', art:'🎨' };
-
-function initMap(lat, lng) {
-  if (leafletMap) {
-    leafletMap.setView([lat, lng], 15);
-    updateUserMarker(lat, lng);
-    return;
-  }
-  leafletMap = L.map('leaflet-map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(leafletMap);
-
-  updateUserMarker(lat, lng);
-  addPlaceMarkersToMap();
-  document.getElementById('map-loading').style.display = 'none';
-}
-
-function updateUserMarker(lat, lng) {
-  const userIcon = L.divIcon({
-    className: '',
-    html: '<div class="user-dot"></div>',
-    iconSize: [16, 16], iconAnchor: [8, 8]
-  });
-  if (userMarker) {
-    userMarker.setLatLng([lat, lng]);
-  } else {
-    userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
-  }
-  // Place places near user location (offset slightly for demo data)
-  updatePlaceCoords(lat, lng);
-}
-
-function updatePlaceCoords(lat, lng) {
-  const offsets = [
-    [0.003, 0.005], [-0.004, 0.002], [0.006, -0.003],
-    [-0.002, -0.006], [0.001, 0.008], [-0.006, 0.004]
-  ];
-  places.forEach((p, i) => {
-    p.lat = lat + offsets[i][0];
-    p.lng = lng + offsets[i][1];
-    // Recalc distance roughly
-    const d = Math.sqrt(offsets[i][0]**2 + offsets[i][1]**2) * 111;
-    p.distance = d.toFixed(1) + ' km';
-  });
-  if (leafletMap) {
-    placeMarkers.forEach(m => leafletMap.removeLayer(m));
-    placeMarkers = [];
-    addPlaceMarkersToMap();
-  }
-}
-
-function addPlaceMarkersToMap() {
-  const filterType = activeMapFilter === 'All' ? null : activeMapFilter.toLowerCase().replace('cafes','cafe').replace('rooftop','rooftop').replace('nature','nature');
-  places.forEach(p => {
-    if (filterType && p.type !== filterType) return;
-    const color = placeColors[p.type] || '#00C9A7';
-    const emoji = placeEmojis[p.type] || '📍';
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 14px rgba(0,0,0,0.5);cursor:pointer">${emoji}</div>`,
-      iconSize: [36, 36], iconAnchor: [18, 18]
-    });
-    const marker = L.marker([p.lat, p.lng], { icon }).addTo(leafletMap);
-    marker.bindPopup(`
-      <div style="font-weight:800;font-size:13px;margin-bottom:2px">${p.name}</div>
-      <div style="font-size:11px;color:#888;margin-bottom:6px">${p.category} · ${p.distance}</div>
-      <div style="font-size:11px;color:#ccc;margin-bottom:8px">${p.description.slice(0,60)}...</div>
-      <div onclick="openPlace(${p.id})" style="background:#00C9A7;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;text-align:center">View Place →</div>
-    `, { maxWidth: 200 });
-    marker.on('click', () => {
-      mapFocusId = p.id;
-      renderMapBottomCard();
-    });
-    placeMarkers.push(marker);
-  });
-}
-
-function locateMe() {
-  document.getElementById('map-loading').style.display = 'flex';
-  if (!navigator.geolocation) {
-    showToast('Geolocation not supported');
-    document.getElementById('map-loading').style.display = 'none';
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      userLat = pos.coords.latitude;
-      userLng = pos.coords.longitude;
-      initMap(userLat, userLng);
-      showToast('📍 Location found!');
-    },
-    err => {
-      document.getElementById('map-loading').style.display = 'none';
-      showToast('Location denied. Using default area.');
-      // Fallback to Delhi
-      userLat = 28.6139; userLng = 77.2090;
-      initMap(userLat, userLng);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+function renderMapDots() {
+  const container = document.getElementById('map-dots');
+  container.innerHTML = mapDots.map(d => `
+    <div class="map-dot" style="left:${d.left};top:${d.top};background:${d.color}" onclick="focusMapPlace(${d.id})">${d.icon}</div>
+  `).join('');
 }
 
 function renderMapFilters() {
   const container = document.getElementById('map-filters');
-  container.innerHTML = ["All","Cafes","Rooftop","Nature","Art & Culture"].map(f => `
+  container.innerHTML = ["All","Cafes","Rooftop","Nature"].map(f => `
     <button class="pill-filter ${f==='All'?'active':''}" onclick="setMapFilter(this,'${f}')">${f}</button>
   `).join('');
 }
 
 function setMapFilter(btn, f) {
-  activeMapFilter = f;
   document.querySelectorAll('#map-filters .pill-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  placeMarkers.forEach(m => leafletMap && leafletMap.removeLayer(m));
-  placeMarkers = [];
-  if (leafletMap) addPlaceMarkersToMap();
-  showToast('Showing: ' + f);
+  showToast(`Showing: ${f}`);
 }
 
 function renderMapBottomCard() {
-  if (!places.length) { document.getElementById("map-bottom-card").innerHTML = "<div style='text-align:center;padding:20px;color:#555'>📍 Fetching nearby places...</div>"; return; }
-  const p = places.find(x => x.id === mapFocusId) || places[0];
+  const p = places.find(x => x.id === mapFocusId) || places[4];
   document.getElementById('map-bottom-card').innerHTML = `
     <div style="display:flex;gap:12px;align-items:center">
       <img src="${p.img}" alt="${p.name}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;flex-shrink:0" />
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${p.name}</span>
+          <span style="font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%">${p.name}</span>
           <span style="color:#FFD700;font-size:13px;font-weight:800">★ ${p.rating}</span>
         </div>
         <div style="font-size:11px;color:#888;margin:2px 0">${p.category} · ${p.distance}</div>
-        <div style="font-size:11px;color:#AAA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description.slice(0,50)}...</div>
+        <div style="font-size:11px;color:#AAA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.description.slice(0,48)}...</div>
       </div>
     </div>
   `;
@@ -828,24 +578,14 @@ function focusMapPlace(id) {
 }
 
 function openMapDirections() {
-  if (!places.length) { showToast("Still loading places..."); return; }
-  const p = places.find(x => x.id === mapFocusId) || places[0];
-  if (userLat && p.lat) {
-    const url = `https://www.google.com/maps/dir/${userLat},${userLng}/${p.lat},${p.lng}`;
-    window.open(url, '_blank');
-  } else {
-    showToast('Getting location first...');
-    locateMe();
-  }
+  const p = places.find(x => x.id === mapFocusId) || places[4];
+  showToast(`Opening directions to ${p.name}...`);
+  setTimeout(() => openPlace(mapFocusId), 800);
 }
-
-
 
 // ==================== SAVED ====================
 const savedTabLabels = ["All", "Want to Visit", "Visited"];
 let activeSavedTab = "All";
-// Track which saved places are marked as "Visited"
-let visitedPlaces = [];
 
 function renderSavedTabs() {
   const container = document.getElementById('saved-tabs');
@@ -861,66 +601,26 @@ function setSavedTab(btn, t) {
   renderSavedList();
 }
 
-function toggleVisited(id, e) {
-  e.stopPropagation();
-  if (visitedPlaces.includes(id)) {
-    visitedPlaces = visitedPlaces.filter(x => x !== id);
-    showToast('Marked as Want to Visit');
-  } else {
-    visitedPlaces.push(id);
-    showToast('Marked as Visited ✅');
-  }
-  renderSavedList();
-}
-
 function renderSavedList() {
   const container = document.getElementById('saved-list');
-
-  // Filter by tab
-  let sp = places.filter(p => savedPlaces.includes(p.id));
-  if (activeSavedTab === "Visited") {
-    sp = sp.filter(p => visitedPlaces.includes(p.id));
-  } else if (activeSavedTab === "Want to Visit") {
-    sp = sp.filter(p => !visitedPlaces.includes(p.id));
-  }
-  // "All" shows everything saved
-
+  const sp = places.filter(p => savedPlaces.includes(p.id));
   if (!sp.length) {
-    const emptyMsgs = {
-      "All": ["🤍", "No saved places yet", "Explore and save hidden gems!"],
-      "Want to Visit": ["📌", "Nothing in Want to Visit", "Save places and mark them to visit!"],
-      "Visited": ["✅", "No visited places yet", "Mark saved places as visited!"],
-    };
-    const [icon, title, sub] = emptyMsgs[activeSavedTab];
-    container.innerHTML = `<div style="text-align:center;padding:60px 0;color:#555">
-      <div style="font-size:48px;margin-bottom:16px">${icon}</div>
-      <div style="font-weight:700">${title}</div>
-      <div style="font-size:13px;margin-top:6px">${sub}</div>
-    </div>`;
+    container.innerHTML = `<div style="text-align:center;padding:60px 0;color:#555"><div style="font-size:48px;margin-bottom:16px">🤍</div><div style="font-weight:700">No saved places yet</div><div style="font-size:13px;margin-top:6px">Explore and save hidden gems!</div></div>`;
     return;
   }
-
-  container.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${sp.map(p=>{
-    const isVisited = visitedPlaces.includes(p.id);
-    return `
+  container.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${sp.map(p=>`
     <div class="place-card" onclick="openPlace(${p.id})" style="display:flex;gap:12px;padding:12px">
-      <div style="position:relative;flex-shrink:0">
-        <img src="${p.img}" alt="${p.name}" style="width:72px;height:72px;border-radius:12px;object-fit:cover" loading="lazy" />
-        ${isVisited ? `<div style="position:absolute;bottom:3px;right:3px;background:#00C9A7;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>` : ''}
-      </div>
+      <img src="${p.img}" alt="${p.name}" style="width:72px;height:72px;border-radius:12px;object-fit:cover;flex-shrink:0" loading="lazy" />
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:14px">${p.name}</div>
         <div style="font-size:11px;color:#888;margin:2px 0">${p.category} · ${p.distance}</div>
         <div style="font-size:11px;color:#AAA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.description.slice(0,50)}...</div>
-        <button onclick="toggleVisited(${p.id}, event)" style="margin-top:6px;background:${isVisited?'rgba(0,201,167,0.12)':'var(--card2)'};border:1px solid ${isVisited?'rgba(0,201,167,0.3)':'var(--border)'};color:${isVisited?'#00C9A7':'#666'};border-radius:8px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
-          ${isVisited ? '✅ Visited' : '○ Mark Visited'}
-        </button>
       </div>
       <button class="heart-btn" onclick="event.stopPropagation();toggleSave(${p.id})" style="align-self:center" id="heart-saved-${p.id}">
         ${heartSvg(true)}
       </button>
-    </div>`;
-  }).join('')}</div>`;
+    </div>
+  `).join('')}</div>`;
 }
 
 // ==================== ADD PLACE ====================

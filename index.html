@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Nookora – Hidden Places Near You</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --teal: #00C9A7;
+    --teal-dark: #00A88A;
+    --bg: #0A0A0F;
+    --card: #13131A;
+    --card2: #1A1A24;
+    --border: #2A2A3A;
+    --text: #ffffff;
+    --muted: #888888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); font-family: 'Nunito', 'Segoe UI', sans-serif; color: var(--text); display: flex; justify-content: center; min-height: 100vh; }
+  ::-webkit-scrollbar { display: none; }
+  #app { width: 100%; max-width: 430px; min-height: 100vh; position: relative; overflow-x: hidden; background: var(--bg); }
+
+  .screen { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---- UTILITIES ---- */
+  .hidden { display: none !important; }
+  .teal-btn { background: var(--teal); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 800; cursor: pointer; width: 100%; letter-spacing: 0.3px; font-family: inherit; transition: background 0.15s; }
+  .teal-btn:active { background: var(--teal-dark); }
+  .back-btn { background: rgba(26,26,36,0.85); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 18px; backdrop-filter: blur(8px); }
+  .tag-pill { background: #1E1E2E; border: 1px solid #3A3A4A; border-radius: 100px; padding: 5px 12px; font-size: 11px; font-weight: 700; color: #AAA; display: inline-block; }
+  .input-field { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; color: #fff; font-size: 14px; font-family: inherit; width: 100%; outline: none; transition: border-color 0.2s; }
+  .input-field:focus { border-color: var(--teal); }
+  .place-card { background: var(--card); border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform 0.15s; border: 1px solid var(--border); }
+  .place-card:active { transform: scale(0.98); }
+  .cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
+  .cat-icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: all 0.2s; }
+  .map-dot { position: absolute; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; border: 2.5px solid #fff; box-shadow: 0 2px 16px rgba(0,0,0,0.6); transition: transform 0.2s; transform: translate(-50%,-50%); }
+  .map-dot:hover, .map-dot:active { transform: translate(-50%,-50%) scale(1.2); }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font-size: 10px; font-weight: 700; transition: color 0.2s; padding: 4px 8px; }
+  .pill-filter { padding: 7px 16px; border-radius: 100px; border: none; background: var(--card2); color: #888; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; font-family: inherit; transition: all 0.2s; }
+  .pill-filter.active { background: var(--teal); color: #fff; }
+  .pill-tab { padding: 8px 16px; border-radius: 100px; border: none; background: var(--card2); color: #888; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .pill-tab.active { background: var(--teal); color: #fff; }
+  .heart-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; }
+  .menu-row { display: flex; align-items: center; padding: 16px 18px; cursor: pointer; gap: 14px; transition: background 0.15s; }
+  .menu-row:hover { background: rgba(255,255,255,0.03); }
+
+  /* ---- BOTTOM NAV ---- */
+  #bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(10,10,15,0.96); backdrop-filter: blur(20px); border-top: 1px solid var(--border); padding: 12px 0 28px; display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+  #add-fab { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--teal), #7B61FF); border: none; font-size: 28px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(0,201,167,0.45); margin-top: -18px; transition: transform 0.15s; }
+  #add-fab:active { transform: scale(0.92); }
+
+  /* ---- TOAST ---- */
+  #toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(0,201,167,0.15); border: 1px solid var(--teal); color: var(--teal); padding: 10px 22px; border-radius: 100px; font-size: 13px; font-weight: 700; z-index: 999; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; max-width: 300px; text-align: center; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---- MODAL ---- */
+  #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  #modal-overlay.open { opacity: 1; pointer-events: all; }
+  #modal-content { background: var(--card); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; padding: 24px 20px 40px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); max-height: 80vh; overflow-y: auto; }
+  #modal-overlay.open #modal-content { transform: translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME SCREEN ============ -->
+  <div id="screen-home" class="screen">
+    <div style="padding:54px 20px 0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--teal),#7B61FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Nookora</span>
+        <span style="font-size:22px">✦</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;font-weight:600">Hidden Places Near You</p>
+    </div>
+
+    <!-- Search -->
+    <div style="padding:16px 20px 0">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:16px">🔍</span>
+        <input id="search-input" placeholder="Search hidden places, cafes, rooftops..." style="background:none;border:none;color:#fff;font-size:13px;outline:none;flex:1;font-family:inherit" oninput="onSearch(this.value)" />
+        <span style="font-size:16px;cursor:pointer" onclick="showToast('Filters coming soon!')">⚙️</span>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div id="cat-row" style="padding:20px 20px 0;display:flex;gap:16px;overflow-x:auto;padding-bottom:4px"></div>
+
+    <!-- Curated Section -->
+    <div id="curated-section">
+      <div style="padding:24px 20px 12px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:800;font-size:17px">Curated For You</span>
+        <span style="color:var(--teal);font-size:13px;font-weight:700;cursor:pointer" onclick="showToast('More places coming soon!')">See all</span>
+      </div>
+      <div id="curated-row" style="padding-left:20px;display:flex;gap:14px;overflow-x:auto;padding-right:20px;padding-bottom:4px"></div>
+    </div>
+
+    <!-- Hidden Gems -->
+    <div style="padding:24px 20px 12px;display:flex;justify-content:space-between;align-items:center">
+      <span id="gems-title" style="font-weight:800;font-size:17px">Hidden Gems Nearby</span>
+      <span id="see-all-btn" style="color:var(--teal);font-size:13px;font-weight:700;cursor:pointer" onclick="showToast('More places coming soon!')">See all</span>
+    </div>
+    <div id="gems-list" style="padding:0 20px;display:flex;flex-direction:column;gap:12px;padding-bottom:100px"></div>
+  </div>
+
+  <!-- ============ MAP SCREEN ============ -->
+  <div id="screen-map" class="screen hidden">
+    <div style="padding:54px 20px 10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:900;font-size:20px">Explore Map</span>
+      <button onclick="locateMe()" style="background:rgba(0,201,167,0.12);border:1px solid rgba(0,201,167,0.3);color:#00C9A7;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📍 My Location</button>
+    </div>
+    <div id="map-filters" style="padding-left:20px;display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;padding-right:20px"></div>
+    <div style="margin:0 16px;border-radius:20px;overflow:hidden;height:320px;border:1px solid var(--border);position:relative">
+      <div id="leaflet-map" style="width:100%;height:100%;z-index:1"></div>
+      <div id="map-loading" style="position:absolute;inset:0;background:#13131A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;border-radius:20px">
+        <div style="font-size:36px;animation:mapspin 1.5s linear infinite">🗺️</div>
+        <div style="font-weight:700;font-size:14px;color:#00C9A7">Getting your location...</div>
+        <div style="font-size:12px;color:#555">Allow location access when prompted</div>
+      </div>
+    </div>
+    <style>
+      @keyframes mapspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+      .leaflet-container{background:#0E0E16!important}
+      .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.6)}
+      .leaflet-popup-content-wrapper{background:#13131A;border:1px solid #2A2A3A;border-radius:14px;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+      .leaflet-popup-tip{background:#13131A}
+      .leaflet-popup-content{margin:12px 14px;font-family:'Nunito',sans-serif;min-width:160px}
+      .leaflet-control-zoom a{background:#1A1A24!important;color:#fff!important;border-color:#2A2A3A!important}
+      .leaflet-control-attribution{display:none!important}
+      .user-dot{width:16px;height:16px;background:#4FC3F7;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 8px rgba(79,195,247,0.2);animation:gpsPulse 2s infinite}
+      @keyframes gpsPulse{0%,100%{box-shadow:0 0 0 8px rgba(79,195,247,0.2)}50%{box-shadow:0 0 0 18px rgba(79,195,247,0.04)}}
+    </style>
+    <div id="map-bottom-card" style="margin:14px 16px 0;background:var(--card);border-radius:16px;padding:12px 14px;border:1px solid var(--border)"></div>
+    <div style="margin:12px 16px 0;padding-bottom:90px">
+      <button class="teal-btn" onclick="openMapDirections()">✈ Get Directions</button>
+    </div>
+  </div>
+
+  <!-- ============ DETAIL SCREEN ============ -->
+  <div id="screen-detail" class="screen hidden" style="padding-bottom:100px">
+    <div id="detail-img-wrap" style="position:relative">
+      <img id="detail-img" src="" alt="" style="width:100%;height:280px;object-fit:cover" />
+      <div style="position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(10,10,15,0.95))"></div>
+      <div style="position:absolute;top:54px;left:20px;right:20px;display:flex;justify-content:space-between">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div style="display:flex;gap:10px">
+          <button class="back-btn" onclick="sharePlace()"><span style="font-size:14px">⬆</span></button>
+          <button class="back-btn" id="detail-heart-btn" onclick="toggleSaveDetail()"><span id="detail-heart-icon">🤍</span></button>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:16px;right:16px;background:rgba(0,0,0,0.6);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;color:#AAA">📸</div>
+    </div>
+    <div style="padding:20px 20px 0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h2 id="detail-name" style="font-size:22px;font-weight:900"></h2>
+          <div id="detail-sub" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+        </div>
+        <span id="detail-rating" style="color:#FFD700;font-weight:800;font-size:16px"></span>
+      </div>
+      <p id="detail-desc" style="font-size:13px;color:#AAA;margin-top:12px;line-height:1.6"></p>
+      <div id="detail-tags" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"></div>
+      <div id="detail-besttime" style="background:var(--card2);border-radius:14px;padding:14px 16px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🌅</span><span style="font-size:13px;font-weight:700;color:#AAA">Best Time to Visit</span></div>
+        <span id="detail-time" style="font-size:13px;font-weight:800;color:#fff"></span>
+      </div>
+      <div style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <span style="font-weight:800;font-size:15px">What People Say</span>
+          <span style="color:var(--teal);font-size:13px;font-weight:700;cursor:pointer" onclick="showToast('More reviews coming soon!')">See all</span>
+        </div>
+        <div id="detail-reviews"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button id="save-btn" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:all 0.2s" onclick="toggleSaveDetail()">🤍 Save</button>
+        <button class="teal-btn" style="flex:2" onclick="showToast('Opening maps...')">✈ Directions</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SAVED SCREEN ============ -->
+  <div id="screen-saved" class="screen hidden" style="padding:54px 20px 90px">
+    <h2 style="font-weight:900;font-size:22px;margin-bottom:20px">Saved Places</h2>
+    <div style="display:flex;gap:8px;margin-bottom:20px" id="saved-tabs"></div>
+    <div id="saved-list"></div>
+  </div>
+
+  <!-- ============ ADD SCREEN ============ -->
+  <div id="screen-add" class="screen hidden" style="padding:54px 20px 90px">
+    <h2 style="font-weight:900;font-size:22px;margin-bottom:6px">Add a Hidden Place</h2>
+    <p style="color:#555;font-size:13px;margin-bottom:24px">Share a secret gem with the community</p>
+    <div id="photo-upload-area" style="background:var(--card2);border:2px dashed var(--border);border-radius:16px;padding:32px;text-align:center;margin-bottom:20px;cursor:pointer;transition:border-color 0.2s" onclick="triggerPhotoUpload()">
+      <div id="photo-preview" style="display:none;position:relative">
+        <img id="preview-img" src="" alt="" style="width:100%;border-radius:10px;max-height:200px;object-fit:cover" />
+        <div style="margin-top:8px;font-size:12px;color:var(--teal)">✓ Photo added! Tap to change</div>
+      </div>
+      <div id="photo-placeholder">
+        <div style="font-size:36px;margin-bottom:8px">📷</div>
+        <div style="font-weight:700;font-size:14px">Add Photos</div>
+        <div style="color:#555;font-size:12px;margin-top:4px">Tap to upload photos of the place</div>
+      </div>
+    </div>
+    <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)" />
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#888;margin-bottom:6px;display:block">Place Name *</label>
+        <input class="input-field" id="add-name" placeholder="Enter place name" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#888;margin-bottom:6px;display:block">Category *</label>
+        <select class="input-field" id="add-category" style="background:var(--card2);cursor:pointer">
+          <option value="">Select category</option>
+          <option>Cafe</option><option>Rooftop</option><option>Nature</option><option>Art &amp; Culture</option><option>Street Food</option><option>Hidden Bar</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#888;margin-bottom:6px;display:block">Price Range</label>
+        <div style="display:flex;gap:8px" id="price-btns">
+          <button onclick="selectPrice(this,'Free')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:#888;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s">Free</button>
+          <button onclick="selectPrice(this,'₹')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:#888;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s">₹</button>
+          <button onclick="selectPrice(this,'₹₹')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:#888;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s">₹₹</button>
+          <button onclick="selectPrice(this,'₹₹₹')" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:#888;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.2s">₹₹₹</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#888;margin-bottom:6px;display:block">Best Time to Visit</label>
+        <input class="input-field" id="add-time" placeholder="e.g. 6:00 PM – 10:00 PM" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#888;margin-bottom:6px;display:block">Why is it hidden? *</label>
+        <textarea class="input-field" id="add-why" rows="3" placeholder="Tell us something unique about this place..." style="resize:none"></textarea>
+      </div>
+    </div>
+    <button class="teal-btn" style="margin-top:24px" onclick="submitPlace()">Submit Place</button>
+    <p style="text-align:center;color:#555;font-size:11px;margin-top:10px">Your place will be reviewed before publishing</p>
+  </div>
+
+  <!-- ============ PROFILE SCREEN ============ -->
+  <div id="screen-profile" class="screen hidden" style="padding:54px 20px 90px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <h2 style="font-weight:900;font-size:22px">Profile</h2>
+      <span style="font-size:22px;cursor:pointer" onclick="showModal('settings')">⚙️</span>
+    </div>
+    <!-- Profile Card -->
+    <div style="background:var(--card);border-radius:20px;padding:20px;border:1px solid var(--border);margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#FF6B35,#FF4D6D);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex-shrink:0">A</div>
+        <div>
+          <div style="font-weight:900;font-size:18px">Aarav Sharma</div>
+          <div style="color:var(--teal);font-weight:700;font-size:13px">Explorer Level 7</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#888;font-weight:600">XP Progress</span>
+        <span style="font-size:12px;font-weight:800">1250 / 2000 XP</span>
+      </div>
+      <div style="background:#1A1A24;border-radius:100px;height:8px;overflow:hidden">
+        <div style="width:62.5%;height:100%;background:linear-gradient(90deg,var(--teal),#7B61FF);border-radius:100px;transition:width 1s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-around;margin-top:20px;padding:16px 0;border-top:1px solid var(--border)">
+        <div style="text-align:center"><div style="font-weight:900;font-size:22px;color:var(--teal)">47</div><div style="font-size:10px;color:#888;font-weight:600;margin-top:2px">Places Visited</div></div>
+        <div style="text-align:center"><div style="font-weight:900;font-size:22px;color:var(--teal)">23</div><div style="font-size:10px;color:#888;font-weight:600;margin-top:2px">Places Shared</div></div>
+        <div style="text-align:center"><div style="font-weight:900;font-size:22px;color:var(--teal)">156</div><div style="font-size:10px;color:#888;font-weight:600;margin-top:2px">People Helped</div></div>
+      </div>
+    </div>
+    <!-- Menu -->
+    <div style="background:var(--card);border-radius:16px;border:1px solid var(--border);overflow:hidden">
+      <div class="menu-row" onclick="showModal('contributions')" style="border-bottom:1px solid var(--border)"><span style="font-size:20px">📍</span><span style="flex:1;font-weight:700;font-size:14px">My Contributions</span><span style="color:#555;font-size:16px">›</span></div>
+      <div class="menu-row" onclick="showModal('achievements')" style="border-bottom:1px solid var(--border)"><span style="font-size:20px">🏆</span><span style="flex:1;font-weight:700;font-size:14px">Achievements</span><span id="ach-badge" style="background:rgba(0,201,167,0.15);color:var(--teal);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">3 New</span><span style="color:#555;font-size:16px;margin-left:8px">›</span></div>
+      <div class="menu-row" onclick="showModal('invite')" style="border-bottom:1px solid var(--border)"><span style="font-size:20px">👥</span><span style="flex:1;font-weight:700;font-size:14px">Invite Friends</span><span style="background:rgba(0,201,167,0.15);color:var(--teal);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">Get rewards</span><span style="color:#555;font-size:16px;margin-left:8px">›</span></div>
+      <div class="menu-row" onclick="showModal('settings')"><span style="font-size:20px">⚙️</span><span style="flex:1;font-weight:700;font-size:14px">Settings</span><span style="color:#555;font-size:16px">›</span></div>
+    </div>
+  </div>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <div id="bottom-nav">
+    <div class="nav-item" id="nav-home" onclick="showScreen('home')" style="color:var(--teal)">
+      <span style="font-size:22px">🏠</span><span>Explore</span>
+    </div>
+    <div class="nav-item" id="nav-map" onclick="showScreen('map')" style="color:#555">
+      <span style="font-size:22px">🗺️</span><span>Map</span>
+    </div>
+    <button id="add-fab" onclick="showScreen('add')">+</button>
+    <div class="nav-item" id="nav-saved" onclick="showScreen('saved')" style="color:#555">
+      <span style="font-size:22px">🤍</span><span>Saved</span>
+    </div>
+    <div class="nav-item" id="nav-profile" onclick="showScreen('profile')" style="color:#555">
+      <span style="font-size:22px">👤</span><span>Profile</span>
+    </div>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div id="toast"></div>
+
+  <!-- ============ MODAL ============ -->
+  <div id="modal-overlay" onclick="closeModal(event)">
+    <div id="modal-content"></div>
+  </div>
+
+</div>
+
+<script>
+// ==================== DATA ====================
+const TEAL = '#00C9A7';
+let savedPlaces = [];
+let selectedPlace = null;
+let prevScreen = 'home';
+let activeCat = 'All';
+let mapFocusId = 0;
+let selectedPrice = '';
+let places = []; // Will be filled from real location data
+
+const cats = ["All","Cafes","Rooftop","Nature","Art & Culture"];
+const catMap = {"All":null,"Cafes":"cafe","Rooftop":"rooftop","Nature":"nature","Art & Culture":"art"};
+const catIcons = {"All":"🏠","Cafes":"☕","Rooftop":"🏙️","Nature":"🌿","Art & Culture":"🎨"};
+
+// OSM amenity/tag → our type mapping
+const osmTypeMap = {
+  cafe:'cafe', coffee_shop:'cafe', restaurant:'cafe', bar:'cafe', pub:'cafe',
+  viewpoint:'rooftop', observation_platform:'rooftop',
+  park:'nature', garden:'nature', nature_reserve:'nature', forest:'nature',
+  museum:'art', gallery:'art', artwork:'art', theatre:'art'
+};
+const typeImages = {
+  cafe: ['https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&q=80','https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&q=80','https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80'],
+  rooftop: ['https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80','https://images.unsplash.com/photo-1519302959554-a75be0afc82a?w=600&q=80'],
+  nature: ['https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&q=80','https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=80'],
+  art: ['https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=600&q=80','https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&q=80']
+};
+const typeTags = {
+  cafe: [['Cozy','Hidden Gem','Local Fav'],['Budget','Aesthetic','Chill'],['Must Try','Chai Spot','Retro']],
+  rooftop: [['Sunset View','City Vibes','Chill'],['Good for Photos','Night View'],['Hidden','Scenic']],
+  nature: [['Peaceful','Trail','Hidden'],['Green','Fresh Air','Walk'],['Escape','Morning Spot']],
+  art: [['Photography','Street Art','Vibes'],['Aesthetic','Murals'],['Culture','Local Art']]
+};
+const typeBestTime = {
+  cafe:'8:00 AM – 10:00 PM', rooftop:'5:00 PM – 10:00 PM',
+  nature:'6:00 AM – 10:00 AM', art:'10:00 AM – 6:00 PM'
+};
+const typeDescriptions = {
+  cafe: 'A cozy local spot popular with the neighbourhood. Great for a quiet break or catching up with friends over a good cup.',
+  rooftop: 'A lesser-known rooftop with beautiful views of the surroundings. Best visited during golden hour.',
+  nature: 'A peaceful green escape tucked away from the city rush. Perfect for a morning walk or quiet time in nature.',
+  art: 'A cultural gem with unique local art and character. Great for photography and exploring the creative side of the city.'
+};
+
+function calcDist(lat1,lng1,lat2,lng2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return (R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1);
+}
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+// ==================== FETCH REAL PLACES ====================
+async function fetchNearbyPlaces(lat, lng) {
+  showHomeLoading(true);
+  const radius = 3000; // 3km
+  const query = `
+    [out:json][timeout:15];
+    (
+      node["amenity"~"cafe|restaurant|bar|pub"](around:${radius},${lat},${lng});
+      node["tourism"~"viewpoint|observation_platform|artwork|gallery|museum"](around:${radius},${lat},${lng});
+      node["leisure"~"park|garden|nature_reserve"](around:${radius},${lat},${lng});
+    );
+    out body 40;
+  `;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method:'POST', body:'data='+encodeURIComponent(query)
+    });
+    const data = await res.json();
+    const elements = data.elements || [];
+
+    let id = 1;
+    const seen = new Set();
+    const fetched = [];
+
+    for (const el of elements) {
+      const tags = el.tags || {};
+      const name = tags.name || tags['name:en'];
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+
+      // Determine type
+      let type = null;
+      if (tags.amenity) type = osmTypeMap[tags.amenity];
+      if (!type && tags.tourism) type = osmTypeMap[tags.tourism];
+      if (!type && tags.leisure) type = osmTypeMap[tags.leisure];
+      if (!type) continue;
+
+      const dist = calcDist(lat, lng, el.lat, el.lon);
+      const imgs = typeImages[type] || typeImages.cafe;
+      const tags2 = typeTags[type] || typeTags.cafe;
+      const rating = (4.0 + Math.random()*0.9).toFixed(1);
+      const priceOpts = ['Free','₹','₹₹','₹₹₹'];
+      const price = type === 'nature' || type === 'art' ? 'Free' : pick(['₹','₹₹','₹₹₹']);
+
+      fetched.push({
+        id: id++,
+        name,
+        category: type === 'cafe' ? 'Cafe' : type === 'rooftop' ? 'Rooftop' : type === 'nature' ? 'Nature' : 'Art & Culture',
+        distance: dist + ' km',
+        distNum: parseFloat(dist),
+        rating: parseFloat(rating),
+        price,
+        tags: pick(tags2),
+        bestTime: typeBestTime[type],
+        description: tags['description'] || typeDescriptions[type],
+        img: pick(imgs),
+        lat: el.lat,
+        lng: el.lon,
+        reviews: [{
+          name: 'Local Explorer',
+          rating: 5,
+          text: 'Found this gem recently — totally worth the visit!',
+          avatar: 'LE'
+        }],
+        type
+      });
+
+      if (fetched.length >= 20) break;
+    }
+
+    if (fetched.length < 3) throw new Error('Too few results');
+
+    // Sort by distance
+    fetched.sort((a,b) => a.distNum - b.distNum);
+    places = fetched;
+    mapFocusId = places[0]?.id || 1;
+    showHomeLoading(false);
+    renderCategories();
+    renderCurated();
+    renderGems();
+    renderMapBottomCard();
+    if (leafletMap) {
+      placeMarkers.forEach(m => leafletMap.removeLayer(m));
+      placeMarkers = [];
+      addPlaceMarkersToMap();
+    }
+    showToast('📍 Showing places near you!');
+  } catch(e) {
+    console.error(e);
+    showHomeLoading(false);
+    showToast('Could not load real places. Try again.');
+  }
+}
+
+function showHomeLoading(show) {
+  let el = document.getElementById('home-loading');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'home-loading';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,15,0.85);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;backdrop-filter:blur(6px)';
+    el.innerHTML = '<div style="font-size:42px;animation:mapspin 1.2s linear infinite">📍</div><div style="font-weight:800;font-size:16px;color:#00C9A7">Finding hidden gems near you...</div><div style="font-size:13px;color:#555">Searching real places around your location</div>';
+    document.getElementById('app').appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  renderCategories();
+  renderGems();
+  renderCurated();
+  renderMapFilters();
+  renderSavedTabs();
+
+  // Auto-get location on load
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        fetchNearbyPlaces(userLat, userLng);
+        if (leafletMap) initMap(userLat, userLng);
+      },
+      err => {
+        showToast('Allow location for real nearby places');
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  }
+});
+
+// ==================== SCREENS ====================
+function showScreen(name) {
+  // Hide all screens
+  document.querySelectorAll('[id^="screen-"]').forEach(s => s.classList.add('hidden'));
+  document.getElementById('screen-' + name).classList.remove('hidden');
+
+  // Nav highlight
+  ['home','map','saved','profile'].forEach(n => {
+    const el = document.getElementById('nav-' + n);
+    if (el) el.style.color = n === name ? TEAL : '#555';
+  });
+
+  if (name === 'saved') renderSavedList();
+  if (name === 'home') { renderGems(); renderCurated(); }
+  if (name === 'map' && !leafletMap) { setTimeout(locateMe, 200); }
+
+  // Show/hide nav
+  const noNav = ['detail','add'].includes(name);
+  document.getElementById('bottom-nav').style.display = noNav ? 'none' : 'flex';
+
+  prevScreen = name === 'detail' ? prevScreen : name;
+  window.scrollTo(0,0);
+}
+
+function goBack() {
+  showScreen(prevScreen === 'detail' ? 'home' : prevScreen);
+}
+
+// ==================== CATEGORIES ====================
+function renderCategories() {
+  const row = document.getElementById('cat-row');
+  row.innerHTML = cats.map(c => `
+    <div class="cat-btn" onclick="setActiveCat('${c}')">
+      <div class="cat-icon" id="cat-icon-${c.replace(/[^a-z]/gi,'_')}" style="background:${activeCat===c?TEAL:'var(--card2)'};border:2px solid ${activeCat===c?TEAL:'var(--border)'}">
+        <span>${catIcons[c]}</span>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${activeCat===c?TEAL:'#888'};white-space:nowrap">${c}</span>
+    </div>
+  `).join('');
+}
+
+function setActiveCat(c) {
+  activeCat = c;
+  renderCategories();
+  renderGems();
+}
+
+// ==================== SEARCH ====================
+function onSearch(q) {
+  const curated = document.getElementById('curated-section');
+  const seeAll = document.getElementById('see-all-btn');
+  const title = document.getElementById('gems-title');
+  curated.style.display = q ? 'none' : '';
+  seeAll.style.display = q ? 'none' : '';
+  title.textContent = q ? `Results` : 'Hidden Gems Nearby';
+  renderGems(q);
+}
+
+function getFiltered(q='') {
+  return places.filter(p => {
+    const catMatch = activeCat === 'All' || p.type === catMap[activeCat];
+    const sq = q.toLowerCase();
+    const searchMatch = !q || p.name.toLowerCase().includes(sq) || p.category.toLowerCase().includes(sq) || p.tags.some(t=>t.toLowerCase().includes(sq));
+    return catMatch && searchMatch;
+  });
+}
+
+// ==================== RENDER GEMS ====================
+function renderGems(q='') {
+  const list = document.getElementById('gems-list');
+  const filtered = getFiltered(q);
+  if (!filtered.length) {
+    list.innerHTML = `<div style="text-align:center;padding:40px 0;color:#555"><div style="font-size:40px;margin-bottom:12px">🔍</div><div style="font-weight:700">No places found</div><div style="font-size:13px;margin-top:6px">Try a different search or category</div></div>`;
+    const title = document.getElementById('gems-title');
+    if (title) title.textContent = 'No Results';
+    return;
+  }
+  const title = document.getElementById('gems-title');
+  if (title && q) title.textContent = `Results (${filtered.length})`;
+  list.innerHTML = filtered.map(p => `
+    <div class="place-card" onclick="openPlace(${p.id})" style="display:flex;gap:12px;padding:12px">
+      <img src="${p.img}" alt="${p.name}" style="width:72px;height:72px;border-radius:12px;object-fit:cover;flex-shrink:0" loading="lazy" />
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        <div style="font-size:11px;color:#888;margin:2px 0">${p.category} · ${p.distance}</div>
+        <div style="font-size:11px;color:#AAA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.description.slice(0,50)}...</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex-shrink:0">
+        <span style="color:#FFD700;font-size:13px;font-weight:800">★ ${p.rating}</span>
+        <button class="heart-btn" onclick="event.stopPropagation();toggleSave(${p.id})" id="heart-gem-${p.id}">
+          ${heartSvg(savedPlaces.includes(p.id))}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== RENDER CURATED ====================
+function renderCurated() {
+  const row = document.getElementById('curated-row');
+  row.innerHTML = places.slice(0,3).map(p => `
+    <div onclick="openPlace(${p.id})" style="min-width:260px;background:var(--card);border-radius:18px;overflow:hidden;cursor:pointer;border:1px solid var(--border);flex-shrink:0;transition:transform 0.15s" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(0.97)'" ontouchend="this.style.transform=''">
+      <div style="position:relative">
+        <img src="${p.img}" alt="${p.name}" style="width:100%;height:160px;object-fit:cover" loading="lazy" />
+        <div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.7);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800;color:#FFD700">★ ${p.rating}</div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:24px 14px 12px">
+          <div style="font-weight:800;font-size:16px">${p.name}</div>
+          <div style="font-size:12px;color:#CCC">${p.category} · ${p.distance} · ${p.price}</div>
+        </div>
+        <button class="heart-btn" onclick="event.stopPropagation();toggleSave(${p.id})" style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);border-radius:50%;width:32px;height:32px" id="heart-cur-${p.id}">
+          ${heartSvg(savedPlaces.includes(p.id))}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== HEART SVG ====================
+function heartSvg(filled) {
+  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled?'#FF4D6D':'none'}" stroke="${filled?'#FF4D6D':'#888'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+}
+
+// ==================== SAVE ====================
+function toggleSave(id) {
+  if (savedPlaces.includes(id)) {
+    savedPlaces = savedPlaces.filter(x => x !== id);
+    showToast('Removed from saved');
+  } else {
+    savedPlaces.push(id);
+    showToast('Saved! 💚');
+  }
+  // Update all heart buttons for this place
+  document.querySelectorAll(`[id^="heart-"][id$="-${id}"]`).forEach(btn => {
+    btn.innerHTML = heartSvg(savedPlaces.includes(id));
+  });
+  // Update detail screen if open
+  if (selectedPlace && selectedPlace.id === id) updateDetailSaveUI();
+}
+
+function toggleSaveDetail() {
+  if (!selectedPlace) return;
+  toggleSave(selectedPlace.id);
+}
+
+function updateDetailSaveUI() {
+  const isSaved = savedPlaces.includes(selectedPlace.id);
+  document.getElementById('detail-heart-icon').textContent = isSaved ? '💖' : '🤍';
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) saveBtn.textContent = isSaved ? '💖 Saved' : '🤍 Save';
+}
+
+// ==================== OPEN PLACE ====================
+function openPlace(id) {
+  selectedPlace = places.find(p => p.id === id);
+  if (!selectedPlace) return;
+  const p = selectedPlace;
+
+  document.getElementById('detail-img').src = p.img;
+  document.getElementById('detail-img').alt = p.name;
+  document.getElementById('detail-name').textContent = p.name;
+  document.getElementById('detail-sub').textContent = `${p.category} · ${p.distance} · ${p.price}`;
+  document.getElementById('detail-rating').textContent = `★ ${p.rating}`;
+  document.getElementById('detail-desc').textContent = p.description;
+  document.getElementById('detail-time').textContent = p.bestTime;
+
+  document.getElementById('detail-tags').innerHTML = p.tags.map(t=>`<span class="tag-pill">${t}</span>`).join('');
+
+  document.getElementById('detail-reviews').innerHTML = p.reviews.map(r=>`
+    <div style="background:var(--card2);border-radius:14px;padding:14px 16px;border:1px solid var(--border);margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,${TEAL},#7B61FF);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${r.avatar}</div>
+        <div><div style="font-weight:700;font-size:13px">${r.name}</div><div style="font-size:11px;color:#888">2 days ago</div></div>
+        <div style="margin-left:auto;color:#FFD700;font-weight:800">★ ${r.rating}.0</div>
+      </div>
+      <p style="font-size:13px;color:#CCC;line-height:1.5">${r.text}</p>
+    </div>
+  `).join('');
+
+  updateDetailSaveUI();
+  showScreen('detail');
+}
+
+function sharePlace() {
+  if (navigator.share && selectedPlace) {
+    navigator.share({ title: selectedPlace.name, text: selectedPlace.description, url: window.location.href }).catch(()=>{});
+  } else {
+    showToast('Link copied! 🔗');
+  }
+}
+
+// ==================== MAP ====================
+// ==================== LEAFLET MAP ====================
+let leafletMap = null;
+let userMarker = null;
+let placeMarkers = [];
+let userLat = null, userLng = null;
+let activeMapFilter = 'All';
+
+const placeColors = { cafe:'#FF6B35', rooftop:'#00C9A7', nature:'#4CAF50', art:'#9C27B0' };
+const placeEmojis = { cafe:'☕', rooftop:'🏙️', nature:'🌿', art:'🎨' };
+
+function initMap(lat, lng) {
+  if (leafletMap) {
+    leafletMap.setView([lat, lng], 15);
+    updateUserMarker(lat, lng);
+    return;
+  }
+  leafletMap = L.map('leaflet-map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(leafletMap);
+
+  updateUserMarker(lat, lng);
+  addPlaceMarkersToMap();
+  document.getElementById('map-loading').style.display = 'none';
+}
+
+function updateUserMarker(lat, lng) {
+  const userIcon = L.divIcon({
+    className: '',
+    html: '<div class="user-dot"></div>',
+    iconSize: [16, 16], iconAnchor: [8, 8]
+  });
+  if (userMarker) {
+    userMarker.setLatLng([lat, lng]);
+  } else {
+    userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+  }
+  // Place places near user location (offset slightly for demo data)
+  updatePlaceCoords(lat, lng);
+}
+
+function updatePlaceCoords(lat, lng) {
+  const offsets = [
+    [0.003, 0.005], [-0.004, 0.002], [0.006, -0.003],
+    [-0.002, -0.006], [0.001, 0.008], [-0.006, 0.004]
+  ];
+  places.forEach((p, i) => {
+    p.lat = lat + offsets[i][0];
+    p.lng = lng + offsets[i][1];
+    // Recalc distance roughly
+    const d = Math.sqrt(offsets[i][0]**2 + offsets[i][1]**2) * 111;
+    p.distance = d.toFixed(1) + ' km';
+  });
+  if (leafletMap) {
+    placeMarkers.forEach(m => leafletMap.removeLayer(m));
+    placeMarkers = [];
+    addPlaceMarkersToMap();
+  }
+}
+
+function addPlaceMarkersToMap() {
+  const filterType = activeMapFilter === 'All' ? null : activeMapFilter.toLowerCase().replace('cafes','cafe').replace('rooftop','rooftop').replace('nature','nature');
+  places.forEach(p => {
+    if (filterType && p.type !== filterType) return;
+    const color = placeColors[p.type] || '#00C9A7';
+    const emoji = placeEmojis[p.type] || '📍';
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 14px rgba(0,0,0,0.5);cursor:pointer">${emoji}</div>`,
+      iconSize: [36, 36], iconAnchor: [18, 18]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(leafletMap);
+    marker.bindPopup(`
+      <div style="font-weight:800;font-size:13px;margin-bottom:2px">${p.name}</div>
+      <div style="font-size:11px;color:#888;margin-bottom:6px">${p.category} · ${p.distance}</div>
+      <div style="font-size:11px;color:#ccc;margin-bottom:8px">${p.description.slice(0,60)}...</div>
+      <div onclick="openPlace(${p.id})" style="background:#00C9A7;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;text-align:center">View Place →</div>
+    `, { maxWidth: 200 });
+    marker.on('click', () => {
+      mapFocusId = p.id;
+      renderMapBottomCard();
+    });
+    placeMarkers.push(marker);
+  });
+}
+
+function locateMe() {
+  document.getElementById('map-loading').style.display = 'flex';
+  if (!navigator.geolocation) {
+    showToast('Geolocation not supported');
+    document.getElementById('map-loading').style.display = 'none';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      initMap(userLat, userLng);
+      showToast('📍 Location found!');
+    },
+    err => {
+      document.getElementById('map-loading').style.display = 'none';
+      showToast('Location denied. Using default area.');
+      // Fallback to Delhi
+      userLat = 28.6139; userLng = 77.2090;
+      initMap(userLat, userLng);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function renderMapFilters() {
+  const container = document.getElementById('map-filters');
+  container.innerHTML = ["All","Cafes","Rooftop","Nature","Art & Culture"].map(f => `
+    <button class="pill-filter ${f==='All'?'active':''}" onclick="setMapFilter(this,'${f}')">${f}</button>
+  `).join('');
+}
+
+function setMapFilter(btn, f) {
+  activeMapFilter = f;
+  document.querySelectorAll('#map-filters .pill-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  placeMarkers.forEach(m => leafletMap && leafletMap.removeLayer(m));
+  placeMarkers = [];
+  if (leafletMap) addPlaceMarkersToMap();
+  showToast('Showing: ' + f);
+}
+
+function renderMapBottomCard() {
+  if (!places.length) { document.getElementById("map-bottom-card").innerHTML = "<div style='text-align:center;padding:20px;color:#555'>📍 Fetching nearby places...</div>"; return; }
+  const p = places.find(x => x.id === mapFocusId) || places[0];
+  document.getElementById('map-bottom-card').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <img src="${p.img}" alt="${p.name}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;flex-shrink:0" />
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${p.name}</span>
+          <span style="color:#FFD700;font-size:13px;font-weight:800">★ ${p.rating}</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin:2px 0">${p.category} · ${p.distance}</div>
+        <div style="font-size:11px;color:#AAA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description.slice(0,50)}...</div>
+      </div>
+    </div>
+  `;
+}
+
+function focusMapPlace(id) {
+  mapFocusId = id;
+  renderMapBottomCard();
+}
+
+function openMapDirections() {
+  if (!places.length) { showToast("Still loading places..."); return; }
+  const p = places.find(x => x.id === mapFocusId) || places[0];
+  if (userLat && p.lat) {
+    const url = `https://www.google.com/maps/dir/${userLat},${userLng}/${p.lat},${p.lng}`;
+    window.open(url, '_blank');
+  } else {
+    showToast('Getting location first...');
+    locateMe();
+  }
+}
+
+
+
+// ==================== SAVED ====================
+const savedTabLabels = ["All", "Want to Visit", "Visited"];
+let activeSavedTab = "All";
+// Track which saved places are marked as "Visited"
+let visitedPlaces = [];
+
+function renderSavedTabs() {
+  const container = document.getElementById('saved-tabs');
+  container.innerHTML = savedTabLabels.map(t=>`
+    <button class="pill-tab ${t===activeSavedTab?'active':''}" onclick="setSavedTab(this,'${t}')">${t}</button>
+  `).join('');
+}
+
+function setSavedTab(btn, t) {
+  activeSavedTab = t;
+  document.querySelectorAll('#saved-tabs .pill-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSavedList();
+}
+
+function toggleVisited(id, e) {
+  e.stopPropagation();
+  if (visitedPlaces.includes(id)) {
+    visitedPlaces = visitedPlaces.filter(x => x !== id);
+    showToast('Marked as Want to Visit');
+  } else {
+    visitedPlaces.push(id);
+    showToast('Marked as Visited ✅');
+  }
+  renderSavedList();
+}
+
+function renderSavedList() {
+  const container = document.getElementById('saved-list');
+
+  // Filter by tab
+  let sp = places.filter(p => savedPlaces.includes(p.id));
+  if (activeSavedTab === "Visited") {
+    sp = sp.filter(p => visitedPlaces.includes(p.id));
+  } else if (activeSavedTab === "Want to Visit") {
+    sp = sp.filter(p => !visitedPlaces.includes(p.id));
+  }
+  // "All" shows everything saved
+
+  if (!sp.length) {
+    const emptyMsgs = {
+      "All": ["🤍", "No saved places yet", "Explore and save hidden gems!"],
+      "Want to Visit": ["📌", "Nothing in Want to Visit", "Save places and mark them to visit!"],
+      "Visited": ["✅", "No visited places yet", "Mark saved places as visited!"],
+    };
+    const [icon, title, sub] = emptyMsgs[activeSavedTab];
+    container.innerHTML = `<div style="text-align:center;padding:60px 0;color:#555">
+      <div style="font-size:48px;margin-bottom:16px">${icon}</div>
+      <div style="font-weight:700">${title}</div>
+      <div style="font-size:13px;margin-top:6px">${sub}</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${sp.map(p=>{
+    const isVisited = visitedPlaces.includes(p.id);
+    return `
+    <div class="place-card" onclick="openPlace(${p.id})" style="display:flex;gap:12px;padding:12px">
+      <div style="position:relative;flex-shrink:0">
+        <img src="${p.img}" alt="${p.name}" style="width:72px;height:72px;border-radius:12px;object-fit:cover" loading="lazy" />
+        ${isVisited ? `<div style="position:absolute;bottom:3px;right:3px;background:#00C9A7;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✓</div>` : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14px">${p.name}</div>
+        <div style="font-size:11px;color:#888;margin:2px 0">${p.category} · ${p.distance}</div>
+        <div style="font-size:11px;color:#AAA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.description.slice(0,50)}...</div>
+        <button onclick="toggleVisited(${p.id}, event)" style="margin-top:6px;background:${isVisited?'rgba(0,201,167,0.12)':'var(--card2)'};border:1px solid ${isVisited?'rgba(0,201,167,0.3)':'var(--border)'};color:${isVisited?'#00C9A7':'#666'};border-radius:8px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">
+          ${isVisited ? '✅ Visited' : '○ Mark Visited'}
+        </button>
+      </div>
+      <button class="heart-btn" onclick="event.stopPropagation();toggleSave(${p.id})" style="align-self:center" id="heart-saved-${p.id}">
+        ${heartSvg(true)}
+      </button>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ==================== ADD PLACE ====================
+function triggerPhotoUpload() {
+  document.getElementById('photo-file-input').click();
+}
+
+function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('preview-img').src = e.target.result;
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('photo-placeholder').style.display = 'none';
+    document.getElementById('photo-upload-area').style.borderColor = TEAL;
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectPrice(btn, val) {
+  selectedPrice = val;
+  document.querySelectorAll('#price-btns button').forEach(b => {
+    b.style.background = 'var(--card2)';
+    b.style.color = '#888';
+    b.style.borderColor = 'var(--border)';
+  });
+  btn.style.background = 'rgba(0,201,167,0.15)';
+  btn.style.color = TEAL;
+  btn.style.borderColor = TEAL;
+}
+
+function submitPlace() {
+  const name = document.getElementById('add-name').value.trim();
+  const category = document.getElementById('add-category').value;
+  const why = document.getElementById('add-why').value.trim();
+  if (!name) { showToast('⚠️ Please enter a place name'); return; }
+  if (!category) { showToast('⚠️ Please select a category'); return; }
+  if (!why) { showToast('⚠️ Tell us why it\'s hidden!'); return; }
+
+  // Reset form
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-category').value = '';
+  document.getElementById('add-why').value = '';
+  document.getElementById('add-time').value = '';
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-placeholder').style.display = 'block';
+  document.getElementById('photo-upload-area').style.borderColor = 'var(--border)';
+  document.getElementById('photo-file-input').value = '';
+  selectedPrice = '';
+  document.querySelectorAll('#price-btns button').forEach(b => {
+    b.style.background='var(--card2)';b.style.color='#888';b.style.borderColor='var(--border)';
+  });
+  showToast('🎉 Place submitted for review!');
+  setTimeout(()=>showScreen('home'), 800);
+}
+
+// ==================== TOAST ====================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ==================== MODAL ====================
+const modalContent = {
+  contributions: `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-weight:900;font-size:18px">My Contributions</h3>
+      <span onclick="closeModalDirect()" style="cursor:pointer;color:#555;font-size:20px">✕</span>
+    </div>
+    <div style="text-align:center;padding:20px 0;color:#555">
+      <div style="font-size:40px;margin-bottom:12px">📍</div>
+      <div style="font-weight:700;font-size:15px">0 Places Added</div>
+      <div style="font-size:13px;margin-top:6px">Start exploring and add hidden places!</div>
+    </div>
+    <button class="teal-btn" onclick="closeModalDirect();showScreen('add')">Add a Place</button>
+  `,
+  achievements: `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-weight:900;font-size:18px">Achievements</h3>
+      <span onclick="closeModalDirect()" style="cursor:pointer;color:#555;font-size:20px">✕</span>
+    </div>
+    ${[['🏆','First Explorer','Visited your first hidden place','Unlocked'],['🌟','Hidden Guru','Saved 5+ places','Unlocked'],['🎨','Art Lover','Visited an Art place','Unlocked'],['🌿','Nature Walker','Visited a nature spot','Locked']].map(([icon,title,desc,status])=>`
+      <div style="display:flex;align-items:center;gap:14px;padding:14px;background:${status==='Locked'?'#111':'rgba(0,201,167,0.07)'};border-radius:14px;margin-bottom:10px;border:1px solid ${status==='Locked'?'var(--border)':'rgba(0,201,167,0.2)'}">
+        <span style="font-size:28px;opacity:${status==='Locked'?'0.3':'1'}">${icon}</span>
+        <div style="flex:1"><div style="font-weight:800;font-size:14px;color:${status==='Locked'?'#555':'#fff'}">${title}</div><div style="font-size:12px;color:#666;margin-top:2px">${desc}</div></div>
+        <span style="font-size:11px;font-weight:700;color:${status==='Locked'?'#444':TEAL}">${status}</span>
+      </div>
+    `).join('')}
+  `,
+  invite: `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-weight:900;font-size:18px">Invite Friends</h3>
+      <span onclick="closeModalDirect()" style="cursor:pointer;color:#555;font-size:20px">✕</span>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(0,201,167,0.15),rgba(123,97,255,0.15));border-radius:16px;padding:20px;text-align:center;margin-bottom:20px;border:1px solid rgba(0,201,167,0.2)">
+      <div style="font-size:36px;margin-bottom:8px">🎁</div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px">Invite &amp; Earn 100 XP</div>
+      <div style="font-size:13px;color:#AAA">For every friend who joins via your link</div>
+    </div>
+    <div style="background:var(--card2);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border:1px solid var(--border)">
+      <span style="font-size:13px;color:#888;font-family:monospace">nookora.app/invite/aarav7</span>
+      <button onclick="showToast('Link copied! 🔗')" style="background:rgba(0,201,167,0.15);border:none;color:${TEAL};font-weight:700;font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit">Copy</button>
+    </div>
+    <button class="teal-btn" onclick="showToast('Opening share sheet...')">Share Invite Link</button>
+  `,
+  settings: `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-weight:900;font-size:18px">Settings</h3>
+      <span onclick="closeModalDirect()" style="cursor:pointer;color:#555;font-size:20px">✕</span>
+    </div>
+    ${[['🔔','Notifications','Push alerts for new places'],['📍','Location Access','Used to find places near you'],['🌙','Dark Mode','Always on'],['🔒','Privacy','Manage your data']].map(([icon,label,sub])=>`
+      <div class="menu-row" onclick="showToast('${label} settings coming soon!')" style="background:var(--card2);border-radius:12px;margin-bottom:8px">
+        <span style="font-size:20px">${icon}</span>
+        <div style="flex:1"><div style="font-weight:700;font-size:14px">${label}</div><div style="font-size:11px;color:#666;margin-top:1px">${sub}</div></div>
+        <span style="color:#555;font-size:16px">›</span>
+      </div>
+    `).join('')}
+  `
+};
+
+function showModal(type) {
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+  content.innerHTML = modalContent[type] || '';
+  overlay.classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalDirect();
+}
+
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>
